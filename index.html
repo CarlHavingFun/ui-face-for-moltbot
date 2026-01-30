@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0c" />
+    <title>ui-face</title>
+    <link rel="stylesheet" href="face.css" />
+  </head>
+  <body>
+    <div id="app" class="face-app">
+      <div id="face-container" class="face-container">
+        <div id="face" class="face state-idle" role="img" aria-label="ui-face">
+          <div class="face-inner">
+            <div class="eyes">
+              <div class="eye left"><span class="eye-line"></span><span class="eye-star" aria-hidden="true">★</span></div>
+              <div class="eye right"><span class="eye-line"></span><span class="eye-star" aria-hidden="true">★</span></div>
+            </div>
+            <div id="mouth" class="mouth"></div>
+          </div>
+        </div>
+      </div>
+      <div id="chat-panel" class="chat-panel">
+        <div id="messages" class="messages" aria-live="polite"></div>
+        <div id="thinking-area" class="thinking-area hidden" aria-live="polite">
+          <div class="thinking-label">思考过程</div>
+          <div id="thinking-content" class="thinking-content"></div>
+        </div>
+        <div class="input-row">
+          <input id="chat-input" type="text" placeholder="输入或点击麦克风说话…" enterkeyhint="send" />
+          <label class="continuous-wrap" title="开启后持续监听，再次点击麦克风结束">
+            <input type="checkbox" id="continuous-listen" />
+            <span>持续监听</span>
+          </label>
+          <button id="btn-mic" type="button" class="btn-icon" title="语音输入" aria-label="语音输入">
+            <span class="icon-mic"></span>
+          </button>
+          <button id="btn-send" type="button" class="btn-icon" title="发送" aria-label="发送">
+            <span class="icon-send"></span>
+          </button>
+          <button id="btn-stop-read" type="button" class="btn-stop-read hidden" title="停止朗读" aria-label="停止朗读">停止朗读</button>
+        </div>
+      </div>
+      <div id="bubble" class="bubble hidden" aria-live="polite"></div>
+      <div id="status" class="status" aria-live="polite"></div>
+      <div id="auth-prompt" class="auth-prompt hidden">
+        <p>需要 Gateway 令牌才能连接</p>
+        <p>在地址栏加上 <code>?token=你的token</code>，或从 Moltbot Control UI 复制带 token 的链接</p>
+      </div>
+    </div>
+    <script src="face.js"></script>
+  </body>
+</html>

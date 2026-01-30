@@ -1,0 +1,503 @@
+/* ui-face — 黑屏白线极简线条，全屏使用 */
+
+:root {
+  --soul-bg: #0a0a0c;
+  --soul-line: rgba(255, 255, 255, 0.92);
+  --soul-line-dim: rgba(255, 255, 255, 0.5);
+  --soul-stroke: 1.8px;
+  --soul-stroke-thin: 1.2px;
+  --soul-chat-bg: rgba(18, 18, 22, 0.96);
+  --soul-bubble-bg: rgba(28, 28, 34, 0.95);
+  --soul-bubble-border: rgba(255, 255, 255, 0.15);
+  --soul-status: rgba(255, 255, 255, 0.6);
+  --soul-input-bg: rgba(255, 255, 255, 0.06);
+  --soul-input-border: rgba(255, 255, 255, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--soul-bg);
+  color: var(--soul-line);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+.face-app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.face-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  min-height: 0;
+}
+
+/* 仅眼睛 + 嘴巴，全屏时放大 */
+.face {
+  position: relative;
+  width: min(80vmin, 520px);
+  height: min(80vmin, 520px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: face-breathe 4.5s ease-in-out infinite;
+}
+
+.face.state-thinking {
+  animation: face-think 2s ease-in-out infinite;
+}
+
+.face.state-speaking {
+  animation: face-speak 0.8s ease-in-out infinite;
+}
+
+.face.state-listening {
+  animation: face-listen 1.4s ease-in-out infinite;
+}
+
+.face.blink-once .eyes .eye-line {
+  animation: blink-once 0.2s ease-out forwards;
+}
+
+@keyframes face-breathe {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50%      { transform: scale(1.02) rotate(0deg); }
+}
+
+@keyframes face-think {
+  0%, 100% { transform: scale(1.02) rotate(-2deg); }
+  50%      { transform: scale(1.03) rotate(2deg); }
+}
+
+@keyframes face-speak {
+  0%, 100% { transform: scale(1.02) rotate(-1deg); }
+  50%      { transform: scale(1.04) rotate(1deg); }
+}
+
+@keyframes face-listen {
+  0%, 100% { transform: scale(1.01) rotate(0deg); }
+  50%      { transform: scale(1.03) rotate(0.5deg); }
+}
+
+.face-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+/* 眼睛：加粗加大，全屏可见 */
+.eyes {
+  display: flex;
+  gap: min(18vmin, 110px);
+  align-items: center;
+}
+
+.eye {
+  position: relative;
+  width: min(9vmin, 56px);
+  height: min(16vmin, 100px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 竖长椭圆 */
+.eye-line {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 4px solid var(--soul-line);
+  background: transparent;
+  animation: eye-idle 4.2s ease-in-out infinite;
+}
+
+.eye.left .eye-line,
+.eye.right .eye-line {
+  animation-delay: 0s;
+}
+
+.eye-star {
+  display: none;
+  position: absolute;
+  font-size: min(12vmin, 72px);
+  line-height: 1;
+  color: var(--soul-line);
+  pointer-events: none;
+}
+
+/* 开心/说话：星星眼 */
+.face.state-speaking .eye-line {
+  display: none;
+}
+
+.face.state-speaking .eye-star {
+  display: block;
+  animation: star-twinkle 0.6s ease-in-out infinite;
+}
+
+.face.state-speaking .eye .eye-line {
+  animation: none;
+}
+
+.face.state-listening .eye-line {
+  animation: eye-listen 1.6s ease-in-out infinite;
+}
+
+.face.state-thinking .eye-line {
+  animation: eye-think 2.2s ease-in-out infinite;
+}
+
+.face.blink-once .eye-line {
+  animation: blink-once 0.2s ease-out forwards;
+}
+
+.face.blink-once .eye-star {
+  animation: blink-once 0.2s ease-out forwards;
+}
+
+@keyframes eye-idle {
+  0%, 42%, 58%, 100% { transform: scaleY(1); opacity: 1; }
+  50%                 { transform: scaleY(0.06); opacity: 0.3; }
+}
+
+@keyframes eye-think {
+  0%, 45%, 55%, 100% { transform: scaleY(1); }
+  50%                 { transform: scaleY(0.08); }
+}
+
+@keyframes eye-listen {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+@keyframes star-twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.05); }
+}
+
+@keyframes blink-once {
+  0%   { transform: scaleY(1); }
+  50%  { transform: scaleY(0.06); }
+  100% { transform: scaleY(1); }
+}
+
+/* 嘴：单线弧；idle 时不显示 */
+.mouth {
+  width: min(16vmin, 96px);
+  height: 0;
+  border: none;
+  border-bottom: 4px solid var(--soul-line);
+  border-radius: 0 0 50% 50%;
+  margin-top: 0.25rem;
+}
+
+.face.state-idle .mouth {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.face.state-thinking .mouth {
+  opacity: 1;
+  visibility: visible;
+  animation: mouth-think 1.5s ease-in-out infinite;
+}
+
+.face.state-speaking .mouth {
+  opacity: 1;
+  visibility: visible;
+  animation: mouth-speak 0.2s ease-in-out infinite;
+}
+
+.face.state-listening .mouth {
+  opacity: 1;
+  visibility: visible;
+  animation: mouth-listen 1s ease-in-out infinite;
+}
+
+@keyframes mouth-think {
+  0%, 100% { transform: scaleX(0.75); opacity: 0.7; }
+  50%      { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes mouth-speak {
+  0%, 100% { transform: scaleX(0.95) scaleY(0.35); }
+  50%      { transform: scaleX(1.08) scaleY(1.8); }
+}
+
+@keyframes mouth-listen {
+  0%, 100% { transform: scaleX(0.85); opacity: 0.8; }
+  50%      { transform: scaleX(1.05); opacity: 1; }
+}
+
+/* 聊天面板 */
+.chat-panel {
+  width: 100%;
+  max-width: 560px;
+  flex-shrink: 0;
+  padding: 12px 16px max(env(safe-area-inset-bottom), 16px);
+  background: var(--soul-chat-bg);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.messages {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.messages:empty::before {
+  content: "在这里输入或点麦克风说话";
+  color: var(--soul-line-dim);
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.thinking-area {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.thinking-area.hidden {
+  display: none;
+}
+
+.thinking-label {
+  font-size: 11px;
+  color: var(--soul-line-dim);
+  margin-bottom: 6px;
+}
+
+.thinking-content {
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.msg {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 85%;
+}
+
+.msg.user {
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.msg.assistant {
+  align-self: flex-start;
+  background: var(--soul-bubble-bg);
+  border: 1px solid var(--soul-bubble-border);
+}
+
+.msg.streaming {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.continuous-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--soul-line-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.continuous-wrap input {
+  accent-color: var(--soul-line);
+}
+
+#chat-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 24px;
+  border: 1px solid var(--soul-input-border);
+  background: var(--soul-input-bg);
+  color: var(--soul-line);
+  font-size: 15px;
+  outline: none;
+}
+
+#chat-input:focus {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+#chat-input::placeholder {
+  color: var(--soul-line-dim);
+}
+
+.btn-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--soul-input-border);
+  background: var(--soul-input-bg);
+  color: var(--soul-line);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-icon.recording {
+  background: rgba(220, 80, 80, 0.2);
+  border-color: rgba(220, 80, 80, 0.5);
+  color: #f0a0a0;
+  animation: btn-pulse 1s ease-in-out infinite;
+}
+
+.btn-stop-read {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--soul-input-border);
+  background: var(--soul-input-bg);
+  color: var(--soul-line);
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-stop-read:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-stop-read.hidden {
+  display: none;
+}
+
+@keyframes btn-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.9; transform: scale(1.05); }
+}
+
+.icon-mic {
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  clip-path: polygon(30% 0%, 70% 0%, 70% 40%, 80% 40%, 80% 55%, 60% 55%, 60% 100%, 40% 100%, 40% 55%, 20% 55%, 20% 40%, 30% 40%);
+}
+
+.icon-send {
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.bubble {
+  position: absolute;
+  bottom: 200px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(90vw, 480px);
+  padding: 12px 20px;
+  border-radius: 16px;
+  background: var(--soul-bubble-bg);
+  border: 1px solid var(--soul-bubble-border);
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow-y: auto;
+  color: var(--soul-line);
+}
+
+.bubble.hidden {
+  display: none;
+}
+
+.status {
+  position: absolute;
+  top: max(env(safe-area-inset-top), 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: var(--soul-status);
+}
+
+.auth-prompt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  background: var(--soul-bg);
+}
+
+.auth-prompt.hidden {
+  display: none;
+}
+
+.auth-prompt p {
+  margin: 8px 0;
+  color: var(--soul-line);
+}
+
+.auth-prompt code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}
