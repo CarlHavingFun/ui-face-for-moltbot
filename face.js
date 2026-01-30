@@ -196,9 +196,11 @@
     var isSecureContext = location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
     var pendingTTSTimer = null;
     var lastFinalText = "";
+    var sentMessageByRunId = {};
 
     function log(msg, obj) {
-      var line = "[ui-face] " + (typeof msg === "string" ? msg : String(msg)) + (obj !== undefined ? " " + JSON.stringify(obj) : "");
+      var ts = new Date().toISOString();
+      var line = ts + " [ui-face] " + (typeof msg === "string" ? msg : String(msg)) + (obj !== undefined ? " " + JSON.stringify(obj) : "");
       console.log(line);
       fetch("/api/log", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ msg: line }) }).catch(function () {});
     }
@@ -323,6 +325,7 @@
       const msg = (text || "").trim();
       if (!msg || !connected) return;
       log("sendMessage msgLen=" + msg.length + " connected=" + connected);
+      log("sendMessage requestText=" + (msg.length > 120 ? msg.slice(0, 120) + "…" : msg));
       appendMessage("user", msg, false);
       if (chatInput) chatInput.value = "";
       setFaceState("thinking");
@@ -336,6 +339,7 @@
       const runId = uuid();
       chatRunId = runId;
       chatStream = "";
+      sentMessageByRunId[runId] = msg;
       log("sendMessage runId=" + runId.slice(0, 8) + " sessionKey=" + sessionKey);
       streamingMsgEl = appendMessage("assistant", "思考中…", true);
       thinkingTimeout = setTimeout(function () {
@@ -408,7 +412,7 @@
           finalWaitTimeout = setTimeout(function () {
             finalWaitTimeout = null;
             if (streamingMsgEl) {
-              streamingMsgEl.textContent = "（无回复内容）";
+              streamingMsgEl.textContent = "思考中";
               finishStreamingMessage(streamingMsgEl);
               streamingMsgEl = null;
             }
@@ -438,9 +442,14 @@
             }
           }
         } else if (p.state === "final" || p.state === "aborted" || p.state === "error") {
+          var errMsgForCheck = typeof p.errorMessage === "string" ? p.errorMessage.trim() : "";
+          var allowErrorRunIdMismatch = p.state === "error" && errMsgForCheck.length > 0;
           if (p.runId && chatRunId && p.runId !== chatRunId) {
-            log("event chat " + p.state + " ignored runId mismatch payload=" + String(p.runId).slice(0, 8) + " ours=" + String(chatRunId).slice(0, 8));
-            return;
+            if (!allowErrorRunIdMismatch) {
+              log("event chat " + p.state + " ignored runId mismatch payload=" + String(p.runId).slice(0, 8) + " ours=" + String(chatRunId).slice(0, 8));
+              return;
+            }
+            log("event chat error accepted despite runId mismatch (showing errorMessage)");
           }
           clearThinkingTimeout();
           clearFinalWaitTimeout();
@@ -452,23 +461,27 @@
           if (!finalText) finalText = "思考中";
           var isPlaceholderNoResponse = finalText === "思考中";
           var isRealReply = finalText && !/^（/.test(finalText) && !isPlaceholderNoResponse;
+          var requestText = (p.runId && sentMessageByRunId[p.runId]) ? String(sentMessageByRunId[p.runId]) : "(unknown)";
+          if (p.runId) delete sentMessageByRunId[p.runId];
+          log("chat " + p.state + " requestText=" + (requestText.length > 80 ? requestText.slice(0, 80) + "…" : requestText));
           log("chat " + p.state + " payloadMessage=" + (p.message ? "yes" : "no") + " textFromPayloadLen=" + (typeof textFromPayload === "string" ? textFromPayload.length : 0) + " chatStreamLen=" + chatStream.length + " finalTextLen=" + finalText.length + " isPlaceholder=" + (/^（/.test(finalText)) + " isRealReply=" + isRealReply);
           log("chat " + p.state + " finalTextPreview=" + (finalText ? finalText.slice(0, 60) : "(empty)"));
           if (!isRealReply && streamingMsgEl) {
-            log("deferring empty final 20s (wait for next final with content, single-shot HTTP)");
+            log("deferring empty final 5min (wait for next final with content, single-shot HTTP)");
+            clearFinalWaitTimeout();
             clearEmptyFinalDefer();
             emptyFinalDeferTimer = setTimeout(function () {
               emptyFinalDeferTimer = null;
-              log("empty final 20s timeout, showing placeholder (no second final received)");
+              log("empty final 5min timeout, showing placeholder (no second final received)");
               if (streamingMsgEl) {
-                streamingMsgEl.textContent = finalText;
+                streamingMsgEl.textContent = "我脑子坏了\n\n排查 API/model 是否可用";
                 finishStreamingMessage(streamingMsgEl);
                 streamingMsgEl = null;
               }
               chatStream = "";
               chatRunId = null;
               setFaceState("thinking");
-            }, 20000);
+            }, 300000);
             return;
           }
           clearEmptyFinalDefer();

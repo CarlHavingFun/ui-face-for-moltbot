@@ -29,8 +29,8 @@ try {
 }
 
 function appendLog(line) {
-  var full = new Date().toISOString() + " " + line;
-  console.log("[face.log] " + line);
+  var full = new Date().toISOString() + " [face.log] " + line;
+  console.log(full);
   try {
     fs.appendFileSync(LOG_FILE, full + "\n", "utf8");
   } catch (e) {

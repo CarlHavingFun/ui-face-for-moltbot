@@ -5,7 +5,8 @@
   "description": "全屏脸 + 聊天 + 语音 — 连接 Moltbot/Clawdbot Gateway 的独立前端",
   "scripts": {
     "start": "node server.js",
-    "test:e2e": "node test-e2e.mjs"
+    "test:e2e": "node test-e2e.mjs",
+    "push": "bash push.sh"
   },
   "devDependencies": {
     "ws": "^8.19.0"
