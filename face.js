@@ -17,6 +17,7 @@
   const chatInput = $("chat-input");
   const btnSend = $("btn-send");
   const btnMic = $("btn-mic");
+  const btnMicContinuous = $("btn-mic-continuous");
   const btnStopRead = $("btn-stop-read");
   const thinkingArea = $("thinking-area");
   const thinkingContent = $("thinking-content");
@@ -607,100 +608,232 @@
       });
     }
 
-    /* 语音输入：先 getUserMedia 触发系统权限弹窗，再启动识别；支持持续监听 */
+    /* 语音输入：语音=说完整句发一次；持续监听=小爱同学式，说唤醒词后说完、静默再发，同级别两个按钮 */
     var recognition = null;
-    var continuousCheckbox = $("continuous-listen");
+    /** 当前会话模式："one-shot" 语音输入 | "continuous" 持续监听 */
+    var listenMode = "one-shot";
+    var stoppedForSend = false;
+    var continuousClearTimer = null;
+    var clearOnRestart = false;
+    var SILENCE_SEND_MS = 1800;
+    var silenceSendTimer = null;
+    /** 持续监听：刚发送过的内容及时间，用于避免晚到的 final 导致重复发送 */
+    var lastSentFromContinuous = "";
+    var lastSentFromContinuousTime = 0;
+    var wakeWordInput = $("wake-word-input");
+    function getWakeWord() {
+      var v = wakeWordInput && wakeWordInput.value ? wakeWordInput.value.trim() : "";
+      return v || "花花";
+    }
+    try {
+      if (wakeWordInput) {
+        try {
+          var saved = localStorage.getItem("ui-face-wake-word");
+          if (saved && saved.trim()) wakeWordInput.value = saved.trim();
+        } catch (_) {}
+        wakeWordInput.addEventListener("change", function () {
+          try { localStorage.setItem("ui-face-wake-word", getWakeWord()); } catch (_) {}
+        });
+        wakeWordInput.addEventListener("blur", function () {
+          try { localStorage.setItem("ui-face-wake-word", getWakeWord()); } catch (_) {}
+        });
+      }
+    } catch (_) {}
     try {
       var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) recognition = new SpeechRecognition();
     } catch (_) {}
     if (recognition) {
       recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
       recognition.lang = (document.documentElement.lang || "zh-CN").replace("-", "_");
+      recognition.maxAlternatives = 1;
       recognition.onstart = function () {
+        stoppedForSend = false;
+        clearOnRestart = false;
+        lastSentFromContinuous = "";
+        lastSentFromContinuousTime = 0;
+        if (silenceSendTimer) clearTimeout(silenceSendTimer);
+        silenceSendTimer = null;
+        if (continuousClearTimer) clearInterval(continuousClearTimer);
+        continuousClearTimer = null;
+        var isContinuous = listenMode === "continuous";
+        if (isContinuous) {
+          continuousClearTimer = setInterval(function () {
+            if (btnMicContinuous && btnMicContinuous.classList.contains("recording")) {
+              clearOnRestart = true;
+              try { recognition.stop(); } catch (_) {}
+            }
+          }, 30000);
+        }
         setFaceState("listening");
-        setStatus("正在听…" + (continuousCheckbox && continuousCheckbox.checked ? "（持续监听中，再次点击麦克风结束）" : ""));
-        if (btnMic) btnMic.classList.add("recording");
+        setStatus("正在听… 请说话" + (isContinuous ? "（说「" + getWakeWord() + "」后说完话，停一下再发；再次点击结束；约 30 秒无唤醒会清空重听）" : "（说完整句后填入输入框，由您点击发送）"));
+        if (btnMic && listenMode === "one-shot") btnMic.classList.add("recording");
+        if (btnMicContinuous && listenMode === "continuous") btnMicContinuous.classList.add("recording");
+        if (chatInput) chatInput.value = "";
       };
       recognition.onend = function () {
-        var keepListening = continuousCheckbox && continuousCheckbox.checked && btnMic && btnMic.classList.contains("recording");
+        var keepListening = !stoppedForSend && listenMode === "continuous" && btnMicContinuous && btnMicContinuous.classList.contains("recording");
         if (keepListening) {
+          if (clearOnRestart && chatInput) chatInput.value = "";
+          clearOnRestart = false;
           setTimeout(function () {
-            if (btnMic && btnMic.classList.contains("recording")) {
+            if (btnMicContinuous && btnMicContinuous.classList.contains("recording")) {
               try { recognition.start(); } catch (_) {}
             }
           }, 150);
           return;
         }
+        if (silenceSendTimer) clearTimeout(silenceSendTimer);
+        silenceSendTimer = null;
+        if (continuousClearTimer) clearInterval(continuousClearTimer);
+        continuousClearTimer = null;
         setFaceState("idle");
         if (connected) setStatus("Gateway 已连接");
         if (btnMic) btnMic.classList.remove("recording");
+        if (btnMicContinuous) btnMicContinuous.classList.remove("recording");
       };
       recognition.onresult = function (ev) {
-        var t = "";
-        for (var i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
-        if (t.trim()) sendMessage(t);
+        var full = "";
+        var hasFinal = false;
+        for (var i = 0; i < ev.results.length; i++) {
+          var r = ev.results[i];
+          full += r[0].transcript;
+          if (r.isFinal) hasFinal = true;
+        }
+        if (chatInput) chatInput.value = full;
+        if (!hasFinal) return;
+        var isContinuous = listenMode === "continuous";
+        if (isContinuous) {
+          var wake = getWakeWord();
+          var idx = full.indexOf(wake);
+          if (idx === -1) return;
+          var after = full.slice(idx + wake.length).trim();
+          if (!after) {
+            setStatus("请说出指令");
+            if (silenceSendTimer) clearTimeout(silenceSendTimer);
+            silenceSendTimer = null;
+            return;
+          }
+          var now = Date.now();
+          if (after === lastSentFromContinuous && (now - lastSentFromContinuousTime) < 4000) {
+            if (silenceSendTimer) clearTimeout(silenceSendTimer);
+            silenceSendTimer = null;
+            return;
+          }
+          if (silenceSendTimer) clearTimeout(silenceSendTimer);
+          silenceSendTimer = setTimeout(function () {
+            silenceSendTimer = null;
+            var txt = (chatInput && chatInput.value) ? String(chatInput.value) : "";
+            var w = getWakeWord();
+            var i = txt.indexOf(w);
+            var toSend = (i >= 0 ? txt.slice(i + w.length).trim() : txt.trim()) || "";
+            if (!toSend) return;
+            var t = Date.now();
+            if (toSend === lastSentFromContinuous && (t - lastSentFromContinuousTime) < 3000) {
+              if (chatInput) chatInput.value = "";
+              return;
+            }
+            lastSentFromContinuous = toSend;
+            lastSentFromContinuousTime = t;
+            sendMessage(toSend);
+            setStatus("已发送：" + (toSend.length > 24 ? toSend.slice(0, 24) + "…" : toSend));
+            if (chatInput) chatInput.value = "";
+          }, SILENCE_SEND_MS);
+        } else {
+          if (full.trim()) {
+            recognition.stop();
+            setStatus("识别完成，可编辑后点击发送");
+          } else {
+            setStatus("未识别到内容，请再试一次");
+          }
+        }
       };
       recognition.onerror = function (ev) {
         var err = ev.error || "";
         if (err === "aborted") return;
         setFaceState("idle");
         if (btnMic) btnMic.classList.remove("recording");
-        if (err === "not-allowed") setStatus("麦克风被拒绝。若之前点过「拒绝」，浏览器不会再次弹窗。请点击地址栏左侧的锁/信息图标 → 网站设置 → 将「麦克风」改为「允许」后刷新（localhost 也需在此处允许）");
-        else if (err === "no-speech") setStatus("未检测到语音，请再试");
+        if (btnMicContinuous) btnMicContinuous.classList.remove("recording");
+        if (err === "not-allowed") setStatus("麦克风被拒绝或当前不可用。若刚拔掉外接麦克风，请连接麦克风或检查系统默认输入设备后刷新重试；若之前点过「拒绝」，请到地址栏锁/信息 → 网站设置 → 麦克风改为「允许」后刷新。");
+        else if (err === "no-speech") setStatus("未检测到语音，请靠近麦克风说话后重试");
         else if (err === "network") setStatus("语音识别需要网络");
         else if (err) setStatus("语音识别失败: " + err);
       };
-      if (btnMic) {
-        if (!isSecureContext) {
-          btnMic.title = "麦克风需在 HTTPS 或 localhost 下使用（当前为不安全连接）";
+      function isRecording() {
+        return (btnMic && btnMic.classList.contains("recording")) || (btnMicContinuous && btnMicContinuous.classList.contains("recording"));
+      }
+      function isIOS() {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      }
+      function startVoice(continuous) {
+        listenMode = continuous ? "continuous" : "one-shot";
+        recognition.continuous = continuous;
+        setStatus("正在请求麦克风权限… 请在弹出的窗口中点击「允许」");
+        var doStart = function () {
+          try { recognition.start(); } catch (err) {
+            setStatus("语音识别启动失败: " + (err.message || err.name));
+          }
+        };
+        if (isIOS()) {
+          doStart();
+        } else if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function") {
+          navigator.mediaDevices.getUserMedia({ audio: {} })
+            .then(function (stream) {
+              stream.getTracks().forEach(function (t) { t.stop(); });
+              doStart();
+            })
+            .catch(function (err) {
+              var name = err.name || "";
+              if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+                setStatus("麦克风被拒绝。若之前点过「拒绝」，请到地址栏锁/信息 → 网站设置 → 麦克风改为「允许」后刷新。");
+              } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+                setStatus("未检测到麦克风设备。请连接麦克风（或插回外接麦克风）并检查系统默认输入设备后刷新重试。");
+              } else if (name === "NotReadableError" || name === "TrackStartError") {
+                setStatus("麦克风不可用（可能被占用或已断开）。请连接麦克风或检查系统默认输入后刷新重试。");
+              } else {
+                doStart();
+              }
+            });
+        } else {
+          doStart();
         }
+      }
+      if (btnMic) {
+        if (!isSecureContext) btnMic.title = "麦克风需在 HTTPS 或 localhost 下使用（当前为不安全连接）";
         btnMic.addEventListener("click", function (e) {
           e.preventDefault();
           e.stopPropagation();
-          if (!isSecureContext) {
-            setStatus("麦克风需在 HTTPS 或 localhost 下使用，当前为不安全连接");
-            return;
-          }
-          if (!connected) {
-            setStatus("请稍候，正在连接…");
-            return;
-          }
-          if (btnMic.classList.contains("recording")) {
+          if (!isSecureContext) { setStatus("麦克风需在 HTTPS 或 localhost 下使用，当前为不安全连接"); return; }
+          if (!connected) { setStatus("请稍候，正在连接…"); return; }
+          if (isRecording()) {
+            if (btnMic) btnMic.classList.remove("recording");
+            if (btnMicContinuous) btnMicContinuous.classList.remove("recording");
             recognition.stop();
             return;
           }
-          setStatus("正在请求麦克风权限… 请在弹出的窗口中点击「允许」");
-          recognition.continuous = continuousCheckbox && continuousCheckbox.checked;
-          var doStartRecognition = function () {
-            try {
-              recognition.start();
-            } catch (err) {
-              setStatus("语音识别启动失败: " + (err.message || err.name));
-            }
-          };
-          if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function") {
-            navigator.mediaDevices.getUserMedia({ audio: {} })
-              .then(function (stream) {
-                stream.getTracks().forEach(function (t) { t.stop(); });
-                doStartRecognition();
-              })
-              .catch(function (err) {
-                if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-                  setStatus("麦克风被拒绝。若之前点过「拒绝」，请点击地址栏左侧的锁/信息图标 → 网站设置 → 将「麦克风」改为「允许」后刷新（localhost 也需在此处允许）");
-                } else {
-                  doStartRecognition();
-                }
-              });
-          } else {
-            doStartRecognition();
+          startVoice(false);
+        });
+      }
+      if (btnMicContinuous) {
+        if (!isSecureContext) btnMicContinuous.title = "麦克风需在 HTTPS 或 localhost 下使用（当前为不安全连接）";
+        btnMicContinuous.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!isSecureContext) { setStatus("麦克风需在 HTTPS 或 localhost 下使用，当前为不安全连接"); return; }
+          if (!connected) { setStatus("请稍候，正在连接…"); return; }
+          if (isRecording()) {
+            if (btnMic) btnMic.classList.remove("recording");
+            if (btnMicContinuous) btnMicContinuous.classList.remove("recording");
+            recognition.stop();
+            return;
           }
+          startVoice(true);
         });
       }
     } else {
-      if (btnMic) btnMic.disabled = true;
-      if (btnMic) btnMic.title = "当前浏览器不支持语音识别，请用 Chrome 或 Edge";
+      if (btnMic) { btnMic.disabled = true; btnMic.title = "当前浏览器不支持语音识别，请用 Chrome 或 Edge"; }
+      if (btnMicContinuous) { btnMicContinuous.disabled = true; btnMicContinuous.title = "当前浏览器不支持语音识别，请用 Chrome 或 Edge"; }
     }
   }
 

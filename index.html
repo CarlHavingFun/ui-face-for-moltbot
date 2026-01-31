@@ -9,6 +9,10 @@
   </head>
   <body>
     <div id="app" class="face-app">
+      <div class="wake-word-row">
+        <label for="wake-word-input">唤醒词</label>
+        <input type="text" id="wake-word-input" value="花花" maxlength="20" placeholder="花花" autocomplete="off" />
+      </div>
       <div id="face-container" class="face-container">
         <div id="face" class="face state-idle" role="img" aria-label="ui-face">
           <div class="face-inner">
@@ -27,13 +31,14 @@
           <div id="thinking-content" class="thinking-content"></div>
         </div>
         <div class="input-row">
-          <input id="chat-input" type="text" placeholder="输入或点击麦克风说话…" enterkeyhint="send" />
-          <label class="continuous-wrap" title="开启后持续监听，再次点击麦克风结束">
-            <input type="checkbox" id="continuous-listen" />
-            <span>持续监听</span>
-          </label>
-          <button id="btn-mic" type="button" class="btn-icon" title="语音输入" aria-label="语音输入">
+          <input id="chat-input" type="text" placeholder="输入或点击语音/持续说话…" enterkeyhint="send" />
+          <button id="btn-mic" type="button" class="btn-icon btn-voice" title="语音输入：说完整句后填入输入框，由您点击发送" aria-label="语音输入">
             <span class="icon-mic"></span>
+            <span class="btn-voice-label">语音</span>
+          </button>
+          <button id="btn-mic-continuous" type="button" class="btn-icon btn-voice" title="持续监听：说唤醒词后说完、停一下发送；再次点击结束" aria-label="持续监听">
+            <span class="icon-mic"></span>
+            <span class="btn-voice-label">持续监听</span>
           </button>
           <button id="btn-send" type="button" class="btn-icon" title="发送" aria-label="发送">
             <span class="icon-send"></span>
