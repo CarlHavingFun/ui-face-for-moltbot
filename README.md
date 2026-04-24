@@ -36,10 +36,10 @@ FACE_PORT=18795 node server.js
 ### 3. 浏览器打开（必须带 token）
 
 ```
-http://127.0.0.1:18794/?token=你的gateway_token
+http://127.0.0.1:18794/?token=<gateway-token>
 ```
 
-Token 可从 Moltbot Control UI 的「带 token 的链接」复制，或查看 `~/.clawdbot/clawdbot.json` 中的 `gateway.auth.token`。
+Token 请通过你自己的安全配置流程注入；推荐直接使用已有的带 token 链接，或通过环境变量/受控配置文件提供，不要依赖固定本机路径。
 
 ### 4. 可选参数
 

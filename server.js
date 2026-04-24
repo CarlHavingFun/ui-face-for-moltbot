@@ -8,7 +8,7 @@
  *   npm start
  *   FACE_PORT=18800 node server.js
  *
- * 打开: http://127.0.0.1:18794/?token=你的gateway_token
+ * 打开: http://127.0.0.1:18794/?token=<gateway-token>
  *
  * 日志: 请求与前端上报的 [ui-face] 日志写入 logs/face.log，便于排查。
  */
@@ -99,7 +99,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`ui-face: http://127.0.0.1:${PORT}/`);
   console.log(`         http://localhost:${PORT}/`);
-  console.log(`Add token: http://127.0.0.1:${PORT}/?token=YOUR_GATEWAY_TOKEN`);
+  console.log(`Add token: http://127.0.0.1:${PORT}/?token=<gateway-token>`);
   console.log(`Log file:  ${LOG_FILE}`);
   appendLog("server started (must open page from this port for client logs)");
 }).on("error", (err) => {

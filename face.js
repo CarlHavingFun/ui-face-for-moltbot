@@ -1,7 +1,7 @@
 /**
  * ui-face — 全屏脸 + 聊天 + 语音
  * 连接 Moltbot Gateway WebSocket，全屏脸 + 聊天框 + 语音输入/朗读。
- * 使用方式: http://127.0.0.1:18794/?token=你的gateway_token
+ * 使用方式: http://127.0.0.1:18794/?token=<gateway-token>
  */
 
 (function () {
@@ -842,7 +842,7 @@
     if (authPrompt) authPrompt.classList.add("hidden");
     if (!token) {
       if (authPrompt) authPrompt.classList.remove("hidden");
-      setStatus("请在 URL 加上 ?token=你的gateway_token");
+      setStatus("请在 URL 加上 ?token=<gateway-token>");
       if (face) face.classList.add("state-idle");
       return;
     }

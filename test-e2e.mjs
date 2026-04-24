@@ -9,22 +9,22 @@
  *
  * Token 来源（按优先级）:
  *   - 环境变量 FACE_E2E_TOKEN
- *   - ~/.clawdbot/clawdbot.json 的 gateway.auth.token
- *   - 环境变量 CLAWDBOT_CONFIG 指向的 JSON 文件
+ *   - 环境变量 FACE_GATEWAY_TOKEN
+ *   - 环境变量 FACE_E2E_CONFIG 指向的 JSON 文件（读取 gateway.auth.token）
  */
 
 import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
+import { dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-let token = process.env.FACE_E2E_TOKEN;
+let token = process.env.FACE_E2E_TOKEN || process.env.FACE_GATEWAY_TOKEN;
 if (!token) {
   const configPath =
-    process.env.CLAWDBOT_CONFIG ||
-    join(process.env.HOME || "", ".clawdbot", "clawdbot.json");
-  if (existsSync(configPath)) {
+    process.env.FACE_E2E_CONFIG ||
+    process.env.FACE_GATEWAY_CONFIG;
+  if (configPath && existsSync(configPath)) {
     try {
       const cfg = JSON.parse(readFileSync(configPath, "utf8"));
       token = cfg?.gateway?.auth?.token;
@@ -35,7 +35,7 @@ if (!token) {
 }
 if (!token) {
   console.error(
-    "Need token: set FACE_E2E_TOKEN, or ensure ~/.clawdbot/clawdbot.json has gateway.auth.token"
+    "Need token: set FACE_E2E_TOKEN or FACE_GATEWAY_TOKEN, or point FACE_E2E_CONFIG to a JSON file with gateway.auth.token"
   );
   process.exit(1);
 }
